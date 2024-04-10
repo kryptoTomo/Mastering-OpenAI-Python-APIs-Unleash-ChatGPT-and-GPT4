@@ -1,13 +1,7 @@
-import argparse
 import os
 import openai
+import argparse
 from dotenv import load_dotenv
-
-load_dotenv()
-
-client = openai.OpenAI(
-    api_key=os.getenv("OPENAI_API_KEY"),
-)
 
 PROMPT="""
 You will receive a file's contents as text.
@@ -18,22 +12,42 @@ For each suggested change, include line numbers to whichc you are referring
 """
 
 
-fileContent = """
-def mystery(x,y):
-    return x**y
-"""
+def code_review(client, file_path, model):
+    with open(file_path, "r") as file:
+        content = file.read()
+
+    generated_code_review = make_code_review_request(client, content, model)
+    print(generated_code_review)
 
 
-messages = [
-    {"role": "system", "content": PROMPT},
-    {"role": "user", "content": f"Code review the following file: {fileContent}"}
-]
+def make_code_review_request(client, fileContent, model):
+    messages = [
+        {"role": "system", "content": PROMPT},
+        {"role": "user", "content": f"Code review the following file: {fileContent}"}
+    ]
+
+    response = client.chat.completions.create(
+        model=model,
+        messages=messages,
+    )
+
+    return response.choices[0].message.content
 
 
-response = client.chat.completions.create(
-    model="gpt-4",
-    messages=messages,
-)
+def main(client):
+    parser = argparse.ArgumentParser(description="Simple code reviewer for a file")
+    parser.add_argument("file")
+    parser.add_argument("--model", default="gpt-4")
+    args = parser.parse_args()
+
+    code_review(client, args.file, args.model)
 
 
-print(response.choices[0].message.content)
+if __name__ == "__main__":
+    load_dotenv()
+
+    client = openai.OpenAI(
+        api_key=os.getenv("OPENAI_API_KEY"),
+    )
+
+    main(client)
